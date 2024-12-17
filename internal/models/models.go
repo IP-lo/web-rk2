@@ -1,17 +1,7 @@
-package api
+package models
 
-import (
-	"github.com/IP-lo/web-rk2/internal/entities"
-	"time"
-)
+import "time"
 
-type Usecase interface {
-	CreateUser(entities.User) (*entities.User, error)
-	ListUsers() ([]*entities.User, error)
-	GetUserByID(id int) (*entities.User, error)
-	UpdateUserByID(id int, user entities.User) (*entities.User, error)
-	DeleteUserByID(id int) error
-}
 type Habit struct {
 	ID          int       `json:"id"`
 	Title       string    `json:"title"`
