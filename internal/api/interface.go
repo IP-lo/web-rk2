@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/ValeryBMSTU/web-rk2/internal/entities"
+	"github.com/IP-lo/web-rk2/internal/entities"
 	"time"
 )
 

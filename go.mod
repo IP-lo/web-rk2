@@ -1,9 +1,10 @@
-module github.com/ValeryBMSTU/web-rk2
+module github.com/IP-lo/web-rk2
 
-go 1.22.1
+go 1.23.4
 
 require (
-	github.com/labstack/echo/v4 v4.12.0
+	github.com/ValeryBMSTU/web-rk2 v0.0.0-20241214053916-d4a9a2121c30
+	github.com/labstack/echo/v4 v4.13.2
 	gopkg.in/yaml.v3 v3.0.1
 )
 
@@ -13,8 +14,8 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.2 // indirect
-	golang.org/x/crypto v0.22.0 // indirect
-	golang.org/x/net v0.24.0 // indirect
-	golang.org/x/sys v0.19.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
+	golang.org/x/crypto v0.31.0 // indirect
+	golang.org/x/net v0.32.0 // indirect
+	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/text v0.21.0 // indirect
 )
