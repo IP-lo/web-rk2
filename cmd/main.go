@@ -1,20 +1,22 @@
 package main
 
 import (
-	"github.com/IP-lo/web-rk2/internal/api"
-	"github.com/labstack/echo/v4"
 	"log"
+
+	"github.com/IP-lo/web-rk2/internal/api"
+	"github.com/IP-lo/web-rk2/internal/provider"
+	"github.com/labstack/echo/v4"
 )
 
 func main() {
 	// Инициализация базы данных
-	db := database.InitDB()
+	db := provider.InitDB()
 
 	// Инициализация Echo
 	e := echo.New()
 
 	// Регистрация маршрутов
-	routes.RegisterRoutes(e, db)
+	api.RegisterRoutes(e, db)
 
 	// Запуск сервера
 	log.Fatal(e.Start(":8080"))

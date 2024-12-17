@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"github.com/labstack/echo/v4"
 	"net/http"
+	"time"
 )
 
 type HabitHandler struct {
@@ -48,50 +49,6 @@ func (h *HabitHandler) GetHabits(c echo.Context) error {
 	return c.JSON(http.StatusOK, habits)
 }
 
-type LogHandler struct {
-	db *sql.DB
-}
-
-func NewLogHandler(db *sql.DB) *LogHandler {
-	return &LogHandler{db: db}
-}
-
-func (l *LogHandler) AddLog(c echo.Context) error {
-	habitID := c.Param("id")
-	var log HabitLog
-	if err := c.Bind(&log); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
-	}
-
-	query := `INSERT INTO habit_logs (habit_id, date, completed) VALUES ($1, $2, $3)`
-	_, err := l.db.Exec(query, habitID, log.Date, log.Completed)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to add log"})
-	}
-
-	return c.JSON(http.StatusCreated, log)
-}
-
-func (l *LogHandler) GetLogs(c echo.Context) error {
-	habitID := c.Param("id")
-
-	rows, err := l.db.Query(`SELECT id, date, completed FROM habit_logs WHERE habit_id = $1`, habitID)
-	if err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch logs"})
-	}
-	defer rows.Close()
-
-	var logs []HabitLog
-	for rows.Next() {
-		var log HabitLog
-		if err := rows.Scan(&log.ID, &log.Date, &log.Completed); err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error parsing logs"})
-		}
-		logs = append(logs, log)
-	}
-
-	return c.JSON(http.StatusOK, logs)
-}
 func (h *HabitHandler) GetHabitByID(c echo.Context) error {
 	habitID := c.Param("id")
 

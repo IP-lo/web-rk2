@@ -1,6 +1,6 @@
 package usecase
 
-import "github.com/ValeryBMSTU/web-rk2/internal/entities"
+import "github.com/IP-lo/web-rk2/internal/entities"
 
 func (u *Usecase) CreateUser(user entities.User) (*entities.User, error) {
 	if user, err := u.p.SelectUserByEmail(user.Email); err != nil {

@@ -1,6 +1,6 @@
 package usecase
 
-import "github.com/ValeryBMSTU/web-rk2/internal/entities"
+import "github.com/IP-lo/web-rk2/internal/entities"
 
 type Provider interface {
 	InsertUser(entities.User) (*entities.User, error)

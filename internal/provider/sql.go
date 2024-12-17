@@ -3,7 +3,7 @@ package provider
 import (
 	"database/sql"
 	"errors"
-	"github.com/ValeryBMSTU/web-rk2/internal/entities"
+	"github.com/IP-lo/web-rk2/internal/entities"
 )
 
 func (p *Provider) InsertUser(user entities.User) (*entities.User, error) {
