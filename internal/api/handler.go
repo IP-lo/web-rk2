@@ -1,114 +1,147 @@
 package api
 
 import (
-	"errors"
-	"github.com/ValeryBMSTU/web-rk2/internal/entities"
-	"github.com/go-playground/validator/v10"
-	"net/http"
-	"strconv"
-
+	"database/sql"
 	"github.com/labstack/echo/v4"
+	"net/http"
 )
 
-func (s *Server) GetUser(e echo.Context) error {
-	id, err := strconv.Atoi(e.Param("id"))
-	if err != nil {
-		return e.String(http.StatusBadRequest, "invalid id")
-	}
-
-	user, err := s.uc.GetUserByID(id)
-	if err != nil {
-		if errors.Is(err, entities.ErrUserNotFound) {
-			return e.String(http.StatusBadRequest, err.Error())
-		}
-		return e.String(http.StatusInternalServerError, err.Error())
-	}
-
-	return e.JSON(http.StatusOK, user)
+type HabitHandler struct {
+	db *sql.DB
 }
 
-func (s *Server) ListUsers(e echo.Context) error {
-	users, err := s.uc.ListUsers()
-	if err != nil {
-		return e.String(http.StatusInternalServerError, err.Error())
-	}
-
-	return e.JSON(http.StatusOK, users)
+func NewHabitHandler(db *sql.DB) *HabitHandler {
+	return &HabitHandler{db: db}
 }
 
-func (s *Server) CreateUser(e echo.Context) error {
-	var user entities.User
-
-	err := e.Bind(&user)
-	if err != nil {
-		return e.String(http.StatusInternalServerError, err.Error())
+func (h *HabitHandler) CreateHabit(c echo.Context) error {
+	var habit Habit
+	if err := c.Bind(&habit); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	err = validator.New().Struct(user)
+	query := `INSERT INTO habits (title, description) VALUES ($1, $2) RETURNING id`
+	err := h.db.QueryRow(query, habit.Title, habit.Description).Scan(&habit.ID)
 	if err != nil {
-		return e.String(http.StatusUnprocessableEntity, err.Error())
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to create habit"})
 	}
 
-	createdUser, err := s.uc.CreateUser(user)
-	if err != nil {
-		if errors.Is(err, entities.ErrUserNameConflict) ||
-			errors.Is(err, entities.ErrUserEmailConflict) ||
-			errors.Is(err, entities.ErrUserAlreadyExists) {
-			return e.String(http.StatusConflict, err.Error())
-		}
-		return e.String(http.StatusInternalServerError, err.Error())
-	}
-
-	return e.JSON(http.StatusCreated, createdUser)
+	return c.JSON(http.StatusCreated, habit)
 }
 
-func (s *Server) UpdateUser(e echo.Context) error {
-	id, err := strconv.Atoi(e.Param("id"))
+func (h *HabitHandler) GetHabits(c echo.Context) error {
+	rows, err := h.db.Query(`SELECT id, title, description, created_at FROM habits`)
 	if err != nil {
-		return e.String(http.StatusBadRequest, "invalid id")
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch habits"})
 	}
+	defer rows.Close()
 
-	var user entities.User
-
-	err = e.Bind(&user)
-	if err != nil {
-		return e.String(http.StatusInternalServerError, err.Error())
-	}
-
-	err = validator.New().Struct(user)
-	if err != nil {
-		return e.String(http.StatusUnprocessableEntity, err.Error())
-	}
-
-	updateUser, err := s.uc.UpdateUserByID(id, user)
-	if err != nil {
-		if errors.Is(err, entities.ErrUserNameConflict) ||
-			errors.Is(err, entities.ErrUserEmailConflict) ||
-			errors.Is(err, entities.ErrUserAlreadyExists) {
-			return e.String(http.StatusConflict, err.Error())
+	var habits []Habit
+	for rows.Next() {
+		var habit Habit
+		if err := rows.Scan(&habit.ID, &habit.Title, &habit.Description, &habit.CreatedAt); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error parsing habits"})
 		}
-		if errors.Is(err, entities.ErrUserNotFound) {
-			return e.String(http.StatusBadRequest, err.Error())
-		}
-		return e.String(http.StatusInternalServerError, err.Error())
+		habits = append(habits, habit)
 	}
 
-	return e.JSON(http.StatusCreated, updateUser)
+	return c.JSON(http.StatusOK, habits)
 }
 
-func (s *Server) DeleteUser(e echo.Context) error {
-	id, err := strconv.Atoi(e.Param("id"))
-	if err != nil {
-		return e.String(http.StatusBadRequest, "invalid id")
+type LogHandler struct {
+	db *sql.DB
+}
+
+func NewLogHandler(db *sql.DB) *LogHandler {
+	return &LogHandler{db: db}
+}
+
+func (l *LogHandler) AddLog(c echo.Context) error {
+	habitID := c.Param("id")
+	var log HabitLog
+	if err := c.Bind(&log); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
 	}
 
-	err = s.uc.DeleteUserByID(id)
+	query := `INSERT INTO habit_logs (habit_id, date, completed) VALUES ($1, $2, $3)`
+	_, err := l.db.Exec(query, habitID, log.Date, log.Completed)
 	if err != nil {
-		if errors.Is(err, entities.ErrUserNotFound) {
-			return e.String(http.StatusBadRequest, err.Error())
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to add log"})
+	}
+
+	return c.JSON(http.StatusCreated, log)
+}
+
+func (l *LogHandler) GetLogs(c echo.Context) error {
+	habitID := c.Param("id")
+
+	rows, err := l.db.Query(`SELECT id, date, completed FROM habit_logs WHERE habit_id = $1`, habitID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch logs"})
+	}
+	defer rows.Close()
+
+	var logs []HabitLog
+	for rows.Next() {
+		var log HabitLog
+		if err := rows.Scan(&log.ID, &log.Date, &log.Completed); err != nil {
+			return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Error parsing logs"})
 		}
-		return e.String(http.StatusInternalServerError, err.Error())
+		logs = append(logs, log)
 	}
 
-	return e.String(http.StatusOK, "OK")
+	return c.JSON(http.StatusOK, logs)
+}
+func (h *HabitHandler) GetHabitByID(c echo.Context) error {
+	habitID := c.Param("id")
+
+	var habit Habit
+	query := `SELECT id, title, description, created_at FROM habits WHERE id = $1`
+	err := h.db.QueryRow(query, habitID).Scan(&habit.ID, &habit.Title, &habit.Description, &habit.CreatedAt)
+	if err == sql.ErrNoRows {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "Habit not found"})
+	} else if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to fetch habit"})
+	}
+
+	return c.JSON(http.StatusOK, habit)
+}
+
+func (h *HabitHandler) UpdateHabit(c echo.Context) error {
+	habitID := c.Param("id")
+
+	var habit Habit
+	if err := c.Bind(&habit); err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": err.Error()})
+	}
+
+	query := `UPDATE habits SET title = $1, description = $2 WHERE id = $3`
+	res, err := h.db.Exec(query, habit.Title, habit.Description, habitID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to update habit"})
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "Habit not found"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "Habit updated successfully"})
+}
+
+func (h *HabitHandler) DeleteHabit(c echo.Context) error {
+	habitID := c.Param("id")
+
+	query := `DELETE FROM habits WHERE id = $1`
+	res, err := h.db.Exec(query, habitID)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "Failed to delete habit"})
+	}
+
+	rowsAffected, _ := res.RowsAffected()
+	if rowsAffected == 0 {
+		return c.JSON(http.StatusNotFound, map[string]string{"error": "Habit not found"})
+	}
+
+	return c.JSON(http.StatusOK, map[string]string{"message": "Habit deleted successfully"})
 }

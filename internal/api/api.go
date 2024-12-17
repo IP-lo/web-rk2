@@ -1,34 +1,20 @@
 package api
 
 import (
-	"fmt"
+	"database/sql"
 	"github.com/labstack/echo/v4"
 )
 
-type Server struct {
-	server  *echo.Echo
-	address string
+func RegisterRoutes(e *echo.Echo, db *sql.DB) {
+	habitHandler := NewHabitHandler(db)
+	logHandler := NewLogHandler(db)
 
-	uc Usecase
-}
+	e.POST("/habits", habitHandler.CreateHabit)
+	e.GET("/habits", habitHandler.GetHabits)
+	e.GET("/habits/:id", habitHandler.GetHabitByID)
+	e.PUT("/habits/:id", habitHandler.UpdateHabit)
+	e.DELETE("/habits/:id", habitHandler.DeleteHabit)
 
-func NewServer(ip string, port int, uc Usecase) *Server {
-	api := Server{
-		uc: uc,
-	}
-
-	api.server = echo.New()
-	api.server.POST("/users", api.CreateUser)
-	api.server.GET("/users", api.ListUsers)
-	api.server.GET("/users/:id", api.GetUser)
-	api.server.PUT("/users/:id", api.UpdateUser)
-	api.server.DELETE("/users/:id", api.DeleteUser)
-
-	api.address = fmt.Sprintf("%s:%d", ip, port)
-
-	return &api
-}
-
-func (s *Server) Run() {
-	s.server.Logger.Fatal(s.server.Start(s.address))
+	e.POST("/habits/:id/logs", logHandler.AddLog)
+	e.GET("/habits/:id/logs", logHandler.GetLogs)
 }

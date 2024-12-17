@@ -1,28 +1,23 @@
 package main
 
 import (
-	"flag"
-	"github.com/ValeryBMSTU/web-rk2/internal/api"
-	"github.com/ValeryBMSTU/web-rk2/internal/config"
-	"github.com/ValeryBMSTU/web-rk2/internal/provider"
-	"github.com/ValeryBMSTU/web-rk2/internal/usecase"
-	_ "github.com/lib/pq"
+	"github.com/labstack/echo/v4"
 	"log"
 )
 
 func main() {
-	// Считываем аргументы командной строки
-	configPath := flag.String("config-path", "./configs/example.yaml", "путь к файлу конфигурации")
-	flag.Parse()
+	// Инициализация базы данных
+	db := database.InitDB()
 
-	cfg, err := config.LoadConfig(*configPath)
-	if err != nil {
-		log.Fatal(err)
-	}
+	// Инициализация Echo
+	e := echo.New()
 
-	prv := provider.NewProvider(cfg.DB.Host, cfg.DB.Port, cfg.DB.User, cfg.DB.Password, cfg.DB.DBname)
-	use := usecase.NewUsecase(prv)
-	srv := api.NewServer(cfg.IP, cfg.Port, use)
+	// Регистрация маршрутов
+	routes.RegisterRoutes(e, db)
 
-	srv.Run()
+	// Запуск сервера
+	log.Fatal(e.Start(":8080"))
 }
+
+/* разработать трекер привычек - календарь куда записываются привычки и отмечаются
+дни выполнения */
